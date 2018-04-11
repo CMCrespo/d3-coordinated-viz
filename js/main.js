@@ -1,9 +1,9 @@
-// created by Carlos Crespo 2018
+// created by Carlos Crespo 2018 for D3 Lab
 
 (function(){
     
 //pseudo-global variable
-var attrArray = ["Coal", "Natural Gas", "Petroleum",     "Nuclear Electric", "Hydro Electric", "Wind", "Fuel Ethanol"]; 
+var attrArray = ["Coal", "Natural Gas", "Petroleum", "Nuclear Electric", "Hydro Electric", "Wind", "Fuel Ethanol"]; 
 
 var expressed = attrArray[0]; //initial attribute     
 
@@ -17,10 +17,17 @@ var chartWidth = window.innerWidth * 0.425,
     chartInnerHeight = chartHeight - topBottomPadding * 2,
     translate = "translate(" + leftPadding + "," + topBottomPadding + ")";
 
+//create quantity for the different attributes
+var mst = "Million Short Tons";
+var mb = "Million Barrels";
+var bcf = "Billion Cubic Feet";
+var bk = "Billion Kilowatthours";
+
+    
 //create a scale to size bars proportionally to frame and for axis
 var yScale = d3.scaleLinear()
     .range([463, 0])
-    .domain([0, 1000]);    
+    .domain([0, 100]);    
     
 // begin script when window loads
 window.onload = setMap();
@@ -39,14 +46,14 @@ function setMap(){
         .attr("width", width)
         .attr("height", height)
         //add zoom and pan functionality to map
-        .call(d3.zoom().on("zoom", function () {
-            map.attr("transform", d3.event.transform)
-        }))
-        .append("g");
+//        .call(d3.zoom().on("zoom", function () {
+//            map.attr("transform", d3.event.transform)
+//        }));
+        
     
     //create Albers equal area conic projection centered on US
     var projection = d3.geoAlbersUsa()
-        .scale(800)
+        .scale(850)
         .translate([width / 2, height / 2]);
     
     //create path generator
@@ -182,7 +189,7 @@ function choropleth(props, colorScale){
     if (typeof val == "number" && !isNaN(val)){
         return colorScale(val);
     } else {
-        return "#CCC";
+        return "#ccc";
     };
 };    
 
@@ -221,8 +228,7 @@ function setChart(csvData, colorScale){
     //add style descriptor
     var desc = bars.append("desc")
         .text('{"stroke": "none", "stroke-width": "0px"}')
-        
-        
+    
         .attr("x", function (d, i) {
             return i * (chartInnerWidth / csvData.length) + leftPadding;
         })
@@ -235,17 +241,21 @@ function setChart(csvData, colorScale){
         .style("fill", function (d) {
             return choropleth(d, colorScale);
         });
-    
+        
     //create a text element for the chart title
     var chartTitle = chart.append("text")
-        .attr("x", 120)
+        .attr("x", 60)
         .attr("y", 40)
         .attr("class", "chartTitle")
-        .text(expressed + " Consumption per State");
+    //    .text(expressed + " Consumption per State");
     
     //create vertical axis generator
     var yAxis = d3.axisLeft()
-        .scale(yScale);
+        .scale(yScale)
+        .tickFormat(d3.format("s"));
+    
+    d3.selectAll("g.axis")
+        .call(yAxis);
     
     //place axis
     var axis = chart.append("g")
@@ -294,6 +304,39 @@ function changeAttribute(attribute, csvData){
     //change the expressed attribute
     expressed = attribute;
     
+    // Retrieve the max value for the selected attribute
+    var max = d3.max(csvData,function(d){
+        return + parseFloat(d[expressed])
+    });
+           
+        // yScale is a global variable - just set the domain to 0 and the max value you found. Adjust if needed.
+   
+        if (expressed == attrArray[1]){
+         yScale = d3.scaleLinear()
+            .range([463,0])    
+            .domain([0,max + 50]);  
+        } else if (expressed == attrArray[2]){  
+            yScale = d3.scaleLinear()
+                .range([463,0]) 
+                .domain([0,max + 50]);
+        } else if (expressed == attrArray[3]){  
+            yScale = d3.scaleLinear()
+                .range([463,0]) 
+                .domain([0,max + 10]);
+        } else if (expressed == attrArray[4]){  
+            yScale = d3.scaleLinear()
+                .range([463,0]) 
+                .domain([0,max + 5]);
+        } else if (expressed == attrArray[5]){  
+            yScale = d3.scaleLinear()
+                .range([463,0]) 
+                .domain([0,max + 10]);
+        }  else {    
+            yScale = d3.scaleLinear()
+                .range([463,0]) 
+                .domain([0,Math.ceil(max)]);            
+        }
+    
     //recreate the color scale
     var colorScale = makeColorScale(csvData);
     
@@ -317,6 +360,8 @@ function changeAttribute(attribute, csvData){
         })
         .duration(500);
     
+    
+    
     updateChart(bars, csvData.length, colorScale);
 };
 
@@ -325,29 +370,54 @@ function updateChart(bars, n, colorScale){
     //position bars
     bars.attr("x", function(d, i){
         return i * (chartInnerWidth / n) + leftPadding;
-    })
-    //size/resize bars
-    .attr("height", function(d, i){
-        return 463 - yScale(parseFloat(d[expressed]));
-    })
-    .attr("y", function(d, i){
-        return yScale(parseFloat(d[expressed])) + topBottomPadding;
-    })
-    //color/recolor bars
-    .style("fill", function(d){
-        return choropleth(d, colorScale);
-    });
+        })
+        //size/resize bars
+        .attr("height", function(d, i){
+            return 463 - yScale(parseFloat(d[expressed]));
+        })
+        .attr("y", function(d, i){
+            return yScale(parseFloat(d[expressed])) + topBottomPadding;
+        })
+        //color/recolor bars
+        .style("fill", function(d){
+            return choropleth(d, colorScale);
+        });
     
-    var chartTitle = d3.select(".chartTitle")
-        .text(expressed + " Consumption per State");
+    //var chartTitle = d3.select(".chartTitle")
+    //    .text(expressed + " Consumption per State");
+    
+    //add units of measure
+    if (expressed == attrArray[0]){
+        var chartTitle = d3.select(".chartTitle")
+        .text(expressed + " Consumption measured in " + mst);
+    } else if (expressed == attrArray[1]) {
+        var chartTitle = d3.select(".chartTitle")
+        .text(expressed + " Consumption measured in " + bcf);
+    } else if (expressed == attrArray[2],[6]) {
+        var chartTitle = d3.select(".chartTitle")
+        .text(expressed + " Consumption measured in " + mb);
+    } else if (expressed == attrArray[3,4,5]) {
+        var chartTitle = d3.select(".chartTitle")
+        .text(expressed + " Consumption measured in " + bk);
+    };
+        
+        
+    //update the chart axis
+    var yAxis = d3.axisLeft()
+        .scale(yScale)
+    
+    d3.selectAll("g.axis")
+        .call(yAxis);
+    
 };
-
+ 
 //function to highlight enumeration units and bars
 function highlight(props){
     //change stroke
     var selected = d3.selectAll("." + props.adm1_code)
-        .style("stroke", "#f03b20")
-        .style("stroke-width", "4");
+        .style("fill-opacity", "0.6")
+        .style("stroke", "red")
+        .style("stroke-width", "3");
     
     setLabel(props);
 };
@@ -355,6 +425,9 @@ function highlight(props){
 //function to reset the element style on mouseout
 function dehighlight(props){
     var selected = d3.selectAll("." + props.adm1_code)
+        .style("fill-opacity", function(){
+            return getStyle(this, "fill-opacity")
+        })
         .style("stroke", function(){
             return getStyle(this, "stroke")
         })
@@ -403,10 +476,10 @@ function moveLabel(){
     var labelWidth = d3.select(".infolabel");
     
     //use coordinates of mousemove event to set label coordintes
-    var x1 = d3.event.clientX + 10,
-        y1 = d3.event.clientY - 75,
+    var x1 = d3.event.clientX - 65,
+        y1 = d3.event.clientY + 40,
         x2 = d3.event.clientX - labelWidth - 10,
-        y2 = d3.event.clientY + 25;
+        y2 = d3.event.clientY + 15;
     
     //horizontal label coordinate, testing for overflow
     var x = d3.event.clientX > window.innerWidth - labelWidth - 20 ? x2 : x1;
